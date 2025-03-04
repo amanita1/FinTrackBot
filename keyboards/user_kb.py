@@ -5,7 +5,7 @@ from create_bot import admins
 def start_kb(user_telegram_id: int):
     kb_list = [
         [KeyboardButton(text="📝 Лимит"), KeyboardButton(text="👤 Профиль")],
-        [KeyboardButton(text="⚙️ Действия"), KeyboardButton(text="О создателе")]
+        [KeyboardButton(text="⚙️ Действия"), KeyboardButton(text="Тут будет ещё одна кнопка")]
     ]
     if user_telegram_id in admins:
         kb_list.append([KeyboardButton(text="⚙️ Админ панель")])

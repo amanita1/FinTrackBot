@@ -1,3 +1,4 @@
+#TODO: отнятие от баланса
 from datetime import datetime, timedelta
 import calendar
 
@@ -22,3 +23,9 @@ async def calculateLimitTillNextMonth(balance):
     everydayLimit = balance / DaysTillNextMonth
 
     return everydayLimit
+
+async def minus(balance, value):
+    return balance - value
+
+async def plus(balance, value):
+    return balance + value

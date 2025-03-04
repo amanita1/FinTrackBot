@@ -3,7 +3,7 @@ from create_bot import admins
 
 def firststart_kb(user_telegram_id: int):
     kb_list = [
-        [KeyboardButton(text=""), KeyboardButton(text="Начать работу")]
+        [KeyboardButton(text="Начать работу")]
     ]
     keyboard = ReplyKeyboardMarkup(
         keyboard=kb_list,
