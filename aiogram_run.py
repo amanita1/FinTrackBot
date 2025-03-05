@@ -4,6 +4,7 @@ from handlers.start import start_router
 from handlers.admin import admin_router
 from utils.first_setup import questionnaire_router
 from handlers.utils_handler import utils_router
+from utils import limit
 # from work_time.time_func import send_time_msg
 
 async def main():
@@ -18,4 +19,5 @@ async def main():
     await dp.start_polling(bot)
 
 if __name__ == "__main__":
+    asyncio.create_task(limit.update_limits())
     asyncio.run(main())

@@ -1,4 +1,4 @@
-#TODO: Доделать операции, сделать перезапись общего баланса при операциях, добавить высчитывание лимита на день и обработку минусовых значений лимита.
+#TODO: добавить высчитывание лимита на день и обработку минусовых значений лимита.
 
 import aiogram.types
 from aiogram import Router, F
@@ -36,8 +36,10 @@ async def cmd_operation(message: Message, state: FSMContext):
 async def cmd_limit(message: Message, state: FSMContext):
     balance = (await db_func.get_user_data(message.from_user.id)).get("balance")
     limit = await my_utils.calculateLimitTillNextMonth(balance)
-    await message.answer(f'У тебя: {balance}'
-                         f'Твой ежедневный лимит: {limit}')
+    today_limit = (await db_func.get_user_data(message.from_user.id)).get("today_limit")
+    await message.answer(f"У тебя: {balance} \n"
+                         f"Твой ежедневный лимит: {limit} \n"
+                         f"Твой сегодняшний лимит: {today_limit}")
 
 @utils_router.message(F.text == '➖ Трата')
 async def cmd_minus(message: Message, state: FSMContext):

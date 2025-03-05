@@ -1,4 +1,3 @@
-#TODO: отнятие от баланса
 from datetime import datetime, timedelta
 import calendar
 
