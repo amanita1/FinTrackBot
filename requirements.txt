@@ -1,7 +1,0 @@
-asyncpg
-aiogram
-APScheduler
-python-decouple
-asyncpg-lite
-pymongo[srv]
-apscheduler
