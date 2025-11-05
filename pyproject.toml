@@ -1,0 +1,47 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "fintrack-tgbot"
+version = "0.1.0"
+description = "Telegram bot and API to track personal finances"
+authors = [{ name = "FinTrack Team", email = "team@example.com" }]
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "aiogram>=3.0.0",
+    "fastapi>=0.110.0",
+    "uvicorn[standard]>=0.27.0",
+    "SQLAlchemy>=2.0.0",
+    "psycopg[binary]>=3.1.8",
+    "alembic>=1.13.0",
+    "pydantic>=2.6.0",
+    "python-dotenv>=1.0.0",
+    "APScheduler>=3.10.4",
+    "jinja2>=3.1.2",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0.0",
+    "freezegun>=1.2.2",
+    "ruff>=0.1.15",
+    "black>=24.2.0",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["app"]
+
+[tool.black]
+line-length = 100
+target-version = ["py311"]
+
+[tool.ruff]
+line-length = 100
+select = ["E", "F", "I", "B", "UP", "N", "ANN", "ASYNC", "C4"]
+ignore = ["ANN101", "ANN102", "ANN401"]
+
+[tool.pytest.ini_options]
+addopts = "-ra"
+python_files = "tests/test_*.py"
