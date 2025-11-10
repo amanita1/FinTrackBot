@@ -1,3 +1,4 @@
+# app/services/reports.py
 from __future__ import annotations
 
 import logging
@@ -7,10 +8,10 @@ from decimal import Decimal
 from typing import Iterable
 from zoneinfo import ZoneInfo
 
+from aiogram import Bot
 from aiogram.exceptions import TelegramAPIError
 from sqlalchemy import select
 
-from ..bot.loader import bot
 from ..config import get_settings
 from ..db import session_scope
 from ..models import Transaction, TransactionType, User
@@ -65,19 +66,19 @@ def _user_timezone(user: User) -> ZoneInfo:
         return ZoneInfo(settings.timezone)
 
 
-async def _send_message(chat_id: int, text: str) -> None:
+async def _send_message(bot: Bot, chat_id: int, text: str) -> None:
     try:
         await bot.send_message(chat_id, text)
     except TelegramAPIError as exc:  # pragma: no cover - depends on Telegram API
         logger.error("Failed to send message to %s: %s", chat_id, exc)
 
 
-def _format_amount(amount: float, currency: str) -> str:
+def _format_amount(amount: Decimal | float, currency: str) -> str:
     value = Decimal(str(amount)).quantize(Decimal("0.01"))
     return f"{value} {currency}"
 
 
-async def run_morning_digest() -> None:
+async def run_morning_digest(bot: Bot) -> None:
     async with session_scope() as session:
         users = (await session.execute(select(User))).scalars().all()
         tx_repo = TransactionRepository(session)
@@ -97,10 +98,10 @@ async def run_morning_digest() -> None:
                 f"Доходы за вчера: {_format_amount(income, user.currency)}.\n"
                 "Желаем продуктивного дня!"
             )
-            await _send_message(user.tg_user_id, text)
+            await _send_message(bot, user.tg_user_id, text)
 
 
-async def run_evening_reminder() -> None:
+async def run_evening_reminder(bot: Bot) -> None:
     async with session_scope() as session:
         users = (await session.execute(select(User))).scalars().all()
         tx_repo = TransactionRepository(session)
@@ -118,10 +119,10 @@ async def run_evening_reminder() -> None:
                 "Не забудьте записать расходы за сегодня.\n"
                 f"Текущие расходы: {_format_amount(expenses, user.currency)}."
             )
-            await _send_message(user.tg_user_id, text)
+            await _send_message(bot, user.tg_user_id, text)
 
 
-async def run_period_rollover() -> None:
+async def run_period_rollover(bot: Bot) -> None:
     async with session_scope() as session:
         users = (await session.execute(select(User))).scalars().all()
 
@@ -135,7 +136,7 @@ async def run_period_rollover() -> None:
                 "Новый месяц — самое время пересмотреть бюджет.\n"
                 "Обновите категории и цели, чтобы оставаться на курсе!"
             )
-            await _send_message(user.tg_user_id, text)
+            await _send_message(bot, user.tg_user_id, text)
 
 
 __all__ = [
