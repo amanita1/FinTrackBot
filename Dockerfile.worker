@@ -1,15 +1,21 @@
 FROM python:3.11-slim
 
-ENV PYTHONUNBUFFERED=1
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PIP_DISABLE_PIP_VERSION_CHECK=1
 
 WORKDIR /app
 
-RUN apt-get update && apt-get install -y build-essential libpq-dev && rm -rf /var/lib/apt/lists/*
+# 1) Ставим системные зависимости, если нужны (psycopg бинарный — можно без build-essential)
+# RUN apt-get update && apt-get install -y build-essential && rm -rf /var/lib/apt/lists/*
 
-COPY pyproject.toml ./
+# 2) Скопируй только зависимости и установи их
+COPY requirements.txt .
+RUN pip install --no-cache-dir --upgrade pip && \
+    pip install --no-cache-dir -r requirements.txt
+
+# 3) Кладём исходники (без сборки пакета)
 COPY app ./app
-RUN pip install --no-cache-dir --upgrade pip && pip install --no-cache-dir .
 
-COPY . .
-
+# 4) Запуск
 CMD ["python", "-m", "app.scheduler.jobs"]
