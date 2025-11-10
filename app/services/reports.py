@@ -1,11 +1,20 @@
 from __future__ import annotations
 
+import logging
 from collections import defaultdict
 from datetime import datetime, timedelta
 from decimal import Decimal
 from typing import Iterable
+from zoneinfo import ZoneInfo
 
-from ..models import Transaction, TransactionType
+from aiogram.exceptions import TelegramAPIError
+from sqlalchemy import select
+
+from ..bot.loader import bot
+from ..config import get_settings
+from ..db import session_scope
+from ..models import Transaction, TransactionType, User
+from ..repositories.transactions import TransactionRepository
 
 
 class ReportBuilder:
@@ -44,4 +53,95 @@ def range_to_dates(now: datetime, range_name: str) -> tuple[datetime, datetime]:
     return start_dt, end_dt
 
 
-__all__ = ["ReportBuilder", "range_to_dates"]
+logger = logging.getLogger(__name__)
+settings = get_settings()
+
+
+def _user_timezone(user: User) -> ZoneInfo:
+    try:
+        return ZoneInfo(user.tz or settings.timezone)
+    except Exception:  # pragma: no cover - fallback on invalid tz names
+        logger.warning("Unknown timezone %s for user %s", user.tz, user.id)
+        return ZoneInfo(settings.timezone)
+
+
+async def _send_message(chat_id: int, text: str) -> None:
+    try:
+        await bot.send_message(chat_id, text)
+    except TelegramAPIError as exc:  # pragma: no cover - depends on Telegram API
+        logger.error("Failed to send message to %s: %s", chat_id, exc)
+
+
+def _format_amount(amount: float, currency: str) -> str:
+    value = Decimal(str(amount)).quantize(Decimal("0.01"))
+    return f"{value} {currency}"
+
+
+async def run_morning_digest() -> None:
+    async with session_scope() as session:
+        users = (await session.execute(select(User))).scalars().all()
+        tx_repo = TransactionRepository(session)
+
+        for user in users:
+            tz = _user_timezone(user)
+            now = datetime.now(tz=tz)
+            start = (now - timedelta(days=1)).replace(hour=0, minute=0, second=0, microsecond=0)
+            end = start + timedelta(days=1, microseconds=-1)
+
+            expenses = await tx_repo.totals_by_type(user.id, start, end, TransactionType.EXPENSE)
+            income = await tx_repo.totals_by_type(user.id, start, end, TransactionType.INCOME)
+
+            text = (
+                "Доброе утро!\n"
+                f"Расходы за вчера: {_format_amount(expenses, user.currency)}.\n"
+                f"Доходы за вчера: {_format_amount(income, user.currency)}.\n"
+                "Желаем продуктивного дня!"
+            )
+            await _send_message(user.tg_user_id, text)
+
+
+async def run_evening_reminder() -> None:
+    async with session_scope() as session:
+        users = (await session.execute(select(User))).scalars().all()
+        tx_repo = TransactionRepository(session)
+
+        for user in users:
+            tz = _user_timezone(user)
+            now = datetime.now(tz=tz)
+            start = now.replace(hour=0, minute=0, second=0, microsecond=0)
+            end = start + timedelta(days=1, microseconds=-1)
+
+            expenses = await tx_repo.totals_by_type(user.id, start, end, TransactionType.EXPENSE)
+
+            text = (
+                "Добрый вечер!\n"
+                "Не забудьте записать расходы за сегодня.\n"
+                f"Текущие расходы: {_format_amount(expenses, user.currency)}."
+            )
+            await _send_message(user.tg_user_id, text)
+
+
+async def run_period_rollover() -> None:
+    async with session_scope() as session:
+        users = (await session.execute(select(User))).scalars().all()
+
+        for user in users:
+            tz = _user_timezone(user)
+            now = datetime.now(tz=tz)
+            if now.day != 1:
+                continue
+
+            text = (
+                "Новый месяц — самое время пересмотреть бюджет.\n"
+                "Обновите категории и цели, чтобы оставаться на курсе!"
+            )
+            await _send_message(user.tg_user_id, text)
+
+
+__all__ = [
+    "ReportBuilder",
+    "range_to_dates",
+    "run_evening_reminder",
+    "run_morning_digest",
+    "run_period_rollover",
+]
