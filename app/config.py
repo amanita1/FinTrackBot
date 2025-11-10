@@ -3,7 +3,12 @@ from __future__ import annotations
 from functools import lru_cache
 from typing import List
 
-from pydantic import BaseSettings, Field, PostgresDsn
+from dotenv import load_dotenv
+from pydantic import Field, PostgresDsn
+from pydantic_settings import BaseSettings
+
+
+load_dotenv()
 
 
 def _split_origins(value: str) -> List[str]:
@@ -11,7 +16,7 @@ def _split_origins(value: str) -> List[str]:
 
 
 class Settings(BaseSettings):
-    bot_token: str = Field("", alias="BOT_TOKEN")
+    bot_token: str = Field("000000:TESTTOKEN", alias="BOT_TOKEN")
     database_url: PostgresDsn = Field(
         "postgresql+psycopg://postgres:postgres@localhost:5432/fintrack",
         alias="DATABASE_URL",
