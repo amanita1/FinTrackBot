@@ -64,6 +64,29 @@ docker compose up -d --build
 
 The API will be available on `http://localhost:80` (proxied via Nginx) and directly on `http://localhost:8080` if you expose the `api` service port.
 
+### Render Deployment
+
+> Render Blueprints automatically create both the web service and the managed PostgreSQL instance defined in [`render.yaml`](render.yaml).
+
+1. Push your fork of this repository to GitHub.
+2. In the [Render dashboard](https://dashboard.render.com/), click **New ➜ Blueprint** and supply the repo URL.
+3. Accept the defaults from `render.yaml` or customize the service name/plan. Render will provision:
+   - A Docker-based web service that builds the supplied `Dockerfile`. The image now runs `render-entrypoint.sh`, which applies Alembic migrations before starting Uvicorn, so every deploy stays in sync with the database schema.
+   - A managed PostgreSQL instance named `fintrack-db` whose connection string is injected into `DATABASE_URL`.
+4. Supply required secrets under **Environment ➜ Environment Variables**:
+   - `BOT_TOKEN`: Telegram bot token.
+   - `WEBHOOK_BASE`: Your Render hostname such as `https://fintrack-tgbot.onrender.com` (used for webhook registration).
+   - (Optional) override `TZ`, `DIGEST_HOUR`, `REMINDER_HOUR`, `ALLOWED_ORIGINS`, etc.
+5. Deploy the blueprint. Render will build the container, run migrations, and start FastAPI on port `8080` (mapped to `https://<service>.onrender.com`).
+6. After the first deploy succeeds, register the Telegram webhook from your local machine:
+   ```bash
+   export BOT_TOKEN=...  # same token as Render
+   python -m app.bot.loader set-webhook "https://fintrack-tgbot.onrender.com"
+   ```
+   Alternatively, run the same command from a one-off Render shell.
+
+Render will now auto-deploy on every push to the configured branch. Update secrets or schedules directly in the Render dashboard without rebuilding the image.
+
 ### Running Tests & Quality Tools
 
 ```bash
