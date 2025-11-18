@@ -87,6 +87,34 @@ The API will be available on `http://localhost:80` (proxied via Nginx) and direc
 
 Render will now auto-deploy on every push to the configured branch. Update secrets or schedules directly in the Render dashboard without rebuilding the image.
 
+#### Running FinTrack inside another Render project
+
+If you already have a Docker-based service on Render and you want FinTrack to live inside the same container (so you only pay for that single service), treat this repository as a subdirectory of your existing project and reuse the provided entrypoint:
+
+1. Add the bot as a submodule or subtree, e.g. `git subtree add --prefix services/fintrack https://github.com/<you>/FinTrackBot main`.
+2. Make sure your Docker image copies that directory and installs its dependencies:
+
+   ```dockerfile
+   COPY services/fintrack /app/services/fintrack
+   RUN pip install --no-cache-dir -r /app/services/fintrack/requirements.txt
+   ```
+
+3. In your service command (or `CMD`), point the entrypoint at the FinTrack folder and optionally run your original app alongside it:
+
+   ```dockerfile
+   ENV FINTRACK_ROOT=/app/services/fintrack \
+       EXTRA_PROC_CMD="python -m myproject.api --port 5000"
+   CMD ["/app/services/fintrack/render-entrypoint.sh"]
+   ```
+
+   `render-entrypoint.sh` now supports `FINTRACK_ROOT` (location of the bot) and `EXTRA_PROC_CMD` (any shell command that should run in parallel, such as your existing FastAPI or worker). Render bills only for the combined container because everything runs inside the same service.
+
+4. Share the same environment variables/secret group with both apps. FinTrack still needs `BOT_TOKEN`, `WEBHOOK_BASE`, `DIGEST_HOUR`, etc., while your original project can keep its existing configuration.
+
+5. Re-deploy the service. The container will launch your `EXTRA_PROC_CMD` in the background, execute FinTrack migrations, and finally expose FinTrack on the configured `WEBAPP_PORT` (keep your other app on a different port or behind a background worker if it does not need HTTP access).
+
+This approach lets both projects run in the same Render plan. If you prefer to keep them in separate services but within a single repository, you can also create multiple entries inside your root `render.yaml` and set `rootDir` to `services/fintrack` for the bot-specific service.
+
 ### Running Tests & Quality Tools
 
 ```bash
